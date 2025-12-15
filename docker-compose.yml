@@ -1,6 +1,7 @@
 version: '3.8'
- 
+
 services:
+  # Zookeeper for Kafka
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     container_name: zookeeper
@@ -9,7 +10,10 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
- 
+    networks:
+      - cyberai-network
+
+  # Kafka message broker
   kafka:
     image: confluentinc/cp-kafka:7.5.0
     container_name: kafka
@@ -28,7 +32,10 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
     depends_on:
       - zookeeper
- 
+    networks:
+      - cyberai-network
+
+  # MinIO object storage
   minio:
     image: minio/minio
     container_name: minio
@@ -38,4 +45,54 @@ services:
     environment:
       MINIO_ROOT_USER: admin
       MINIO_ROOT_PASSWORD: admin12345
+    volumes:
+      - ./data/minio:/data
     command: server /data --console-address ":9001"
+    networks:
+      - cyberai-network
+
+  # Unified CyberAI Pipeline (without Dockerfile)
+  cyberai-pipeline:
+    image: python:3.11-slim
+    container_name: cyberai-pipeline
+    depends_on:
+      - kafka
+      - minio
+    environment:
+      # Kafka settings
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      
+      # MinIO settings
+      MINIO_HOST: "minio:9000"
+      ACCESS_KEY: "admin"
+      SECRET_KEY: "admin12345"
+      BUCKET_NAME: "cyberai"
+      MINIO_SECURE: "false"
+      
+      # Tokenizer settings
+      TOKEN_THRESHOLD: "10000"
+      POLL_INTERVAL: "30"
+      SQLITE_DB: "/app/data/processed_objects.db"
+      LOCAL_PDF_DIR: "/app/data/processed_pdfs"
+      
+      # Python path
+      PYTHONPATH: "/app/src"
+    volumes:
+      - ./src:/app/src
+      - ./data:/app/data
+      - ./requirements.txt:/app/requirements.txt
+    working_dir: /app
+    command: >
+      sh -c "
+        apt-get update &&
+        apt-get install -y --no-install-recommends build-essential gcc libxml2-dev libxslt-dev libjpeg-dev &&
+        pip install --no-cache-dir -r /app/requirements.txt &&
+        python /app/src/main.py --mode both --watch-path /app/data/raw/input
+      "
+    restart: unless-stopped
+    networks:
+      - cyberai-network
+
+networks:
+  cyberai-network:
+    driver: bridge
