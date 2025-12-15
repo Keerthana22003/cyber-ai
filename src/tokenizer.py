@@ -175,7 +175,7 @@ def write_json_output(items: List[Dict], filename: str) -> str:
     """Write JSON output to current subdirectory"""
     filepath = os.path.join(_current_output_subdir, filename)
     with open(filepath, 'w', encoding='utf-8') as f:
-        json.dump(items, f, separators=(',', ':'), ensure_ascii=False)
+        json.dump(items, f, indent=2, ensure_ascii=False)
     logging.info(f"JSON file written: {filepath} ({len(items)} items)")
     return filepath
 
@@ -841,6 +841,19 @@ def stream_and_process_object(client: Minio, object_name: str) -> bool:
         except Exception:
             return False
 
+def create_done_file():
+    """Create _DONE.txt in the current output subdirectory"""
+    if not _current_output_subdir:
+        return
+
+    done_path = os.path.join(_current_output_subdir, "_DONE.txt")
+    try:
+        with open(done_path, "w", encoding="utf-8"):
+            pass  # empty file
+        logging.info(f"DONE file created: {done_path}")
+    except Exception as e:
+        logging.error(f"Failed to create DONE.txt: {e}")
+
 
 def process_minio_record(client: Minio, record: dict):
     """Process MinIO record - MODIFIED to create subdirectory per input file"""
@@ -897,6 +910,9 @@ def process_minio_record(client: Minio, record: dict):
         etag = record.get("s3", {}).get("object", {}).get("eTag")
         lm = record.get("eventTime") or record.get("s3", {}).get("object", {}).get("lastModified")
         mark_processed(key, etag, lm)
+        
+        # ✅ Create DONE.txt after everything is flushed
+        create_done_file()
 
     except Exception as e:
         logging.error(f"Error processing object {key}: {e}")
