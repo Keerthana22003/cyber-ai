@@ -1,7 +1,9 @@
 from watchdog.events import FileSystemEventHandler
 from file_converters import evtx_to_xml, log_to_csv
 from minio import Minio
+from minio.error import S3Error
 from datetime import datetime
+import logging
 import os
  
 MINIO_ENDPOINT = "localhost:9000"
@@ -62,31 +64,37 @@ class EventHandler(FileSystemEventHandler):
         }
  
         content_type = CONTENT_TYPES.get(extension, "application/octet-stream")
-        file_size = os.path.getsize(output_file_path)
+        # file_size = os.path.getsize(output_file_path)
  
         # Ensure bucket
         if not minio_client.bucket_exists(MINIO_BUCKET):
             minio_client.make_bucket(MINIO_BUCKET)
-            print(f"Bucket created: {MINIO_BUCKET}")
+            logging.info(f"Bucket created: {MINIO_BUCKET}")
  
         # Upload to MinIO (correct API)
-        with open(output_file_path, "rb") as f:
-            minio_client.put_object(
-                MINIO_BUCKET,
-                minio_path,      # object name
-                data=f,               # file stream
-                length=file_size,       # length in bytes
-                content_type=content_type
-            )
+        try:
+            logging.info(f"Uploading file {minio_path} to MinIO")
+            minio_client.fput_object(
+                    bucket_name=MINIO_BUCKET,
+                    object_name=minio_path,      
+                    file_path=output_file_path,              
+                    content_type=content_type
+                )
+            logging.info(f"Uploaded {minio_path} to MinIO")
+
+        except S3Error as e:
+            logging.info("MinIO upload failed: {e}")
+            raise
+            
  
  
-        print(f"Uploaded to MinIO: {minio_path}")
+        logging.info(f"Uploaded to MinIO: {minio_path}")
  
         if output_file_path != file_path:   # Don't delete original
             os.remove(output_file_path)
-            print(f"Deleted temp file: {output_file_path}")
+            logging.info("Deleted temp file: {output_file_path}")
  
-        print(f"Processed: {output_file_path}")
+        logging.info("Processed: {output_file_path}")
  
  
  

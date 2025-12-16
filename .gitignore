@@ -207,3 +207,9 @@ marimo/_lsp/
 __marimo__/
 
 data/raw/*
+data/*
+src/new_folder
+src/hf_cache
+src/processed_tokens
+src/reports
+src/processed_objects.db

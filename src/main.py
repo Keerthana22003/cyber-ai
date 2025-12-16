@@ -15,6 +15,7 @@ import logging
 import argparse
 import threading
 from pathlib import Path
+from ttp_mapping_pipeline import CompletionHandler
 
 # Import modules from both projects
 from file_event_handlers import EventHandler
@@ -40,6 +41,9 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+TEMP_DIR = ".\processed_tokens"     
+OUTPUT_DIR = "./reports" 
 
 
 # In main.py, update the graceful_shutdown function:
@@ -76,10 +80,15 @@ def start_file_watcher(watch_path: str):
     
     # Ensure directory exists
     Path(watch_path).mkdir(parents=True, exist_ok=True)
+
+    os.makedirs(TEMP_DIR, exist_ok=True)
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
     
     event_handler = EventHandler()
+    ttp_event_handler = CompletionHandler()
     _observer = Observer()
     _observer.schedule(event_handler, watch_path, recursive=True)
+    _observer.schedule(ttp_event_handler, TEMP_DIR, recursive=True)
     _observer.start()
     
     logger.info(f"File watcher started - monitoring: {watch_path}")

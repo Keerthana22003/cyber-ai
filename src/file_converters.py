@@ -4,16 +4,17 @@ import Evtx.Views as e_views
 import pandas as pd
 import csv
 from datetime import datetime
+import logging
  
 OUTPUT_FILE_PATH = "..\data\processed\input"
- 
+
 def evtx_to_xml(evtx_file_path: str, output_dir=OUTPUT_FILE_PATH) -> tuple:
     """
     Convert an EVTX file into an XML string (not saved to disk)
     and return a filename ending with .xml.
     """
  
-    print("Conversion Started:", datetime.now())
+    logging.info("Conversion Started:", datetime.now())
  
     # Output file name
     base_name = os.path.splitext(os.path.basename(evtx_file_path))[0]
@@ -37,7 +38,7 @@ def evtx_to_xml(evtx_file_path: str, output_dir=OUTPUT_FILE_PATH) -> tuple:
         xml_file.write("</Events>")
  
     print("Conversion Ended:", datetime.now())
-    print("XML file created:", xml_file_path)
+    logging.info("XML file created: {xml_file_path}")
  
     return xml_file_path
  
@@ -46,7 +47,7 @@ def log_to_csv(input_log_path: str, output_dir=OUTPUT_FILE_PATH) -> tuple:
     Convert a .log file into CSV format IN-MEMORY without modifying or removing any content.
     and return a filename ending with .csv.
     """
-    print("Conversion Started:", datetime.now())
+    logging.info("Conversion Started:", datetime.now())
  
     # Output CSV file path
     base_name = os.path.basename(input_log_path)
@@ -67,7 +68,7 @@ def log_to_csv(input_log_path: str, output_dir=OUTPUT_FILE_PATH) -> tuple:
                 writer.writerow([line.rstrip("\n")])
  
     print("Conversion Ended:", datetime.now())
-    print("CSV file created:", output_csv_path)
+    logging.info("CSV file created:", output_csv_path)
  
     return output_csv_path
  
